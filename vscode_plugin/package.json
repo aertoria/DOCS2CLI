@@ -1,7 +1,7 @@
 {
-  "name": "readmesimplified",
-  "displayName": "readmeSimplified",
-  "description": "Provides environment setup using AI",
+  "name": "docs2cli",
+  "displayName": "docs2cli",
+  "description": "docs2cli",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.85.0"
@@ -17,7 +17,7 @@
     "commands": [
       {
         "command": "readmesimplified.execute",
-        "title": "Readme Simplified"
+        "title": "Docs2CLI"
       }
     ]
   },

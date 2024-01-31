@@ -3,45 +3,11 @@
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 let customTerminal = vscode.window.createTerminal('readMeSimplified Terminal'); // Declare a variable to store the terminal
-const filePath = path.join(__dirname, './Readme.md');
-// const pythonPath = path.join(__dirname, './getCommands.py');
 const textPath = path.join(__dirname, './doc2cli.txt');
-
-// Get the readme
-// fs.readFile(filePath, 'utf8', (err, data) => {
-// 	if (err) {
-// 		console.error(err);
-// 		return;
-// 	}
-// 	// Process the file content here
-// 	let combinedData = '"""In the given input, find all the terminal commands and' +
-// 					   ' output it in a format where each individual line is ' + 
-// 					   'a terminal command. Please dont include any explanation. The ' + 
-// 					   'output should be: ' +
-// 					   '<Replace terminal command 1 on line 1>\n' +
-// 					   '<Replace terminal command 2 on line 2>\n....' +
-// 					   'The input file is: '+data+'"""';
-// 	let encodedString = btoa(combinedData);
-// 	exec('sh ~/venvs/robot_arm/bin/activate && python3 '+pythonPath + ' '+encodedString, (error, stdout, stderr) => {
-// 		if (error) {
-// 			console.error(`Error: ${error}`);
-// 			return;
-// 		}
-// 		if (stderr) {
-// 			console.error(`stderr: ${stderr}`);
-// 			return;
-// 		}
-// 		if (stdout) {
-// 			console.log(`stdout: ${stdout}`);
-// 			return;
-// 		}
-// 	});
-// });
 
 // Function to fetch HTML
 async function fetchHtml(url) {
@@ -61,121 +27,86 @@ async function fetchHtml(url) {
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
-	let disposable = vscode.commands.registerCommand('readmesimplified.execute', async () => {
-		// List of terminal commands to choose from
-		// const commands = [
-		// 	{ label: 'echo Hello World', description: 'Prints Hello World to the terminal' },
-		// 	{ label: 'ls', description: 'Lists files in the current directory' },
-		// 	// Add more commands as needed
-		// ];
-		// Show QuickPick menu to choose a terminal command
-		// const selectedCommand = await vscode.window.showQuickPick(commands, { placeHolder: 'Select a terminal command' });
-		const userInput = await vscode.window.showInputBox({
+    let disposable = vscode.commands.registerCommand('readmesimplified.execute', async () => {
+        // Collecting user input
+        const userInput = await vscode.window.showInputBox({
             prompt: 'Tell us what you want to install:',
             placeHolder: 'Text will be stored here',
         });
-		
-		// Example data you want to send in the POST request
-		const prompt = 'https://ee54-76-132-138-253.ngrok-free.app/prod/'+encodeURIComponent(userInput);
+        if (!userInput) {
+            return; // Exit if no input is provided
+        }
 
-		// let dataOutput = await fetch(prompt)
-		// 	.then(response => {
-		// 		// Check if the request was successful
-		// 		if (!response.ok) {
-		// 			throw new Error('Network response was not ok');
-		// 		}
-		// 		dataOutput = response.text();
-		// 		return response.text();
-		// 	})
-		// 	.catch(error => {
-		// 		console.error('Fetching HTML failed:', error);
-		// 	});
-		let dataOutput;
-		fetchHtml(prompt).then(async (html) => {
-			dataOutput = html;
-			// Text file creation
-			fs.writeFile(textPath, dataOutput, (err) => {
-				if (err) {
-					console.error('An error occurred:', err);
-					return;
-				}
-				console.log('File was saved!');
-				const filePath = vscode.Uri.file(textPath);
-				// Open the file
-				vscode.workspace.openTextDocument(filePath).then(doc => {
-					vscode.window.showTextDocument(doc);
-				});
+        // Fetching HTML content
+        vscode.window.showInformationMessage("Fetching HTML content...");
+        const prompt = 'http://127.0.0.1:7001/prod/' + encodeURIComponent(userInput);
+        let dataOutput;
+        try {
+            dataOutput = await fetchHtml(prompt);
+        } catch (error) {
+            console.log('Failed to fetch HTML:', error);
+            vscode.window.showErrorMessage('Failed to fetch HTML: ' + error.message);
+            return;
+        }
 
-			});
-			let splitCommands = dataOutput.split("$: ");
-			let splitSentences = splitCommands.map(splitCommand => splitCommand.split("\n")[0]);
-		
-			// console.log(splitSentences);
-			if (splitCommands.length) {
-				// Ask for confirmation
-					for (var i=0; i < splitCommands.length; i++) {
-					  const confirmation = await vscode.window.showInformationMessage(
-						  `Execute the command: "${splitSentences[i]}"?`,
-						  'Yes',
-						  'No'
-					  );
-				  
-					  if (confirmation === 'Yes') {
-						  // Execute the selected command in the terminal
-						  // If terminal doesn't exist, create one
-						  if (!customTerminal) {
-							  customTerminal = vscode.window.createTerminal('readMeSimplified Terminal');
-						  }
-					  
-						  // Execute the selected command in the terminal
-						  customTerminal.sendText(splitSentences[i]);
-						  customTerminal.show();
-					  }
-				  }
-			  }
+        // Writing to text file
+        vscode.window.showInformationMessage("Saving commands to text file...");
+        const textPath = path.join(__dirname, './doc2cli.txt');
+        try {
+            await fs.promises.writeFile(textPath, dataOutput);
+            console.log('File was saved!');
+        } catch (err) {
+            console.error('An error occurred:', err);
+            vscode.window.showErrorMessage('An error occurred: ' + err.message);
+            return;
+        }
 
-			// console.log(splitSentences[1][0]);
-		}).catch(error => {
-			console.log('Failed to fetch HTML:', error);
-		});
+        // Opening the text file
+        const filePath = vscode.Uri.file(textPath);
+        await vscode.workspace.openTextDocument(filePath).then(doc => {
+            vscode.window.showTextDocument(doc);
+        });
 
-		
-		// if (splitSentences.length) {
-		//   // Ask for confirmation
-		//   	for (var i=0; i < splitCommands.length; i++) {
-		// 		const confirmation = await vscode.window.showInformationMessage(
-		// 			`Execute the command: "${selectedCommand.label}"?`,
-		// 			'Yes',
-		// 			'No'
-		// 		);
-			
-		// 		if (confirmation === 'Yes') {
-		// 			// Execute the selected command in the terminal
-		// 			// If terminal doesn't exist, create one
-		// 			if (!customTerminal) {
-		// 				customTerminal = vscode.window.createTerminal('readMeSimplified Terminal');
-		// 			}
-				
-		// 			// Execute the selected command in the terminal
-		// 			customTerminal.sendText(selectedCommand.label);
-		// 			customTerminal.show();
-		// 		}
-		// 	}
-		// }		
-	});
+        // Extracting commands
+        vscode.window.showInformationMessage("Ready to execute terminal commands?", "OK").then(async selection => {
+            if (selection === "OK") {
+                let splitCommands = dataOutput.split("$: ");
+                if (splitCommands.length > 1) {
+                    splitCommands.shift(); // Remove the portion before the first occurrence
+                }
+                let splitSentences = splitCommands.map(splitCommand => splitCommand.split("\n")[0]);
 
-	context.subscriptions.push(disposable);
+                if (splitCommands.length) {
+                    for (let i = 0; i < splitCommands.length; i++) {
+                        const confirmation = await vscode.window.showInformationMessage(
+                            `Execute the command: "${splitSentences[i]}"?`,
+                            'Yes',
+                            'No'
+                        );
+
+                        if (confirmation === 'Yes') {
+                            let customTerminal = vscode.window.createTerminal('readMeSimplified Terminal');
+                            customTerminal.sendText(splitSentences[i]);
+                            customTerminal.show();
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+    context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
-function deactivate() {
-	// Dispose of the terminal when the extension is deactivated
-	// if (customTerminal) {
-	// 	customTerminal.dispose();
-	// }
+async function fetchHtml(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error('Network response was not ok: ' + response.statusText);
+    }
+    return await response.text();
 }
 
 module.exports = {
-	activate,
-	deactivate
+    activate,
+    deactivate: function() {}
 }

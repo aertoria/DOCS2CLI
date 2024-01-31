@@ -1,10 +1,6 @@
 from flask import Flask
 from langchain_community.llms.fireworks import Fireworks
-import fireworks.client
 import openai
-
-import instructor
-from openai import OpenAI
 from pydantic import BaseModel
 from typing import List
 app = Flask(__name__)
@@ -194,6 +190,7 @@ def exa_search(prompt):
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     print("server start")
-    app.run(host='0.0.0.0',debug=True)
+    app.run(host='0.0.0.0',debug=True, port=7001)
+
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
